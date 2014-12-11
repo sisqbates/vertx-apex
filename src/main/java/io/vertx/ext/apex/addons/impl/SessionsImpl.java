@@ -41,7 +41,12 @@ public class SessionsImpl implements Sessions {
     if (sessionCookie == null)
       return null;
 
-    return store.get(sessionCookie.getValue());
+    Session result = store.get(sessionCookie.getValue());
+    if (result != null && result.isExpired()) {
+      this.destroySession();
+      result = null;
+    }
+    return result;
   }
 
   @Override

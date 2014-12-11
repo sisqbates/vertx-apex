@@ -20,13 +20,13 @@ public class SessionsTest extends ApexTestBase {
   @Override
   public void setUp() throws Exception {
     super.setUp();
-    sessions = Sessions.sessions(10);
     router.route().handler(Cookies.cookies());
-    router.route().handler(sessions);
   }
 
   @Test
   public void testNoSession() throws Exception {
+    Sessions sessions = Sessions.sessions(10);
+    router.route().handler(sessions);
 
     router.route().handler(rc -> {
       assertNull(sessions.getSession());
@@ -54,7 +54,7 @@ public class SessionsTest extends ApexTestBase {
   }
 
   @Test
-  public void testSessionKeepAlive() throws Exception {
+  public void testNotExpiredSession() throws Exception {
     Sessions sessions = Sessions.sessions(10);
     router.route().handler(sessions);
 
@@ -70,6 +70,28 @@ public class SessionsTest extends ApexTestBase {
       rc.response().end();
     });
     testRequest(HttpMethod.GET, "/", 200, "OK");
+    testRequestWithCookies(HttpMethod.GET, "/", Sessions.APEX_SESSION_COOKIE_NAME + "=" + sessionIds.iterator().next(),
+        200, "OK");
+
+  }
+
+  @Test
+  public void testExpiredSession() throws Exception {
+    Sessions sessions = Sessions.sessions(1);
+    router.route().handler(sessions);
+
+    final Set<String> sessionIds = new HashSet<>();
+    router.route().handler(rc -> {
+      if (sessionIds.isEmpty()) {
+        sessions.addSession();
+        sessionIds.add(sessions.getSession().getId());
+      } else {
+        assertNull(sessions.getSession());
+      }
+      rc.response().end();
+    });
+    testRequest(HttpMethod.GET, "/", 200, "OK");
+    Thread.sleep(2000);
     testRequestWithCookies(HttpMethod.GET, "/", Sessions.APEX_SESSION_COOKIE_NAME + "=" + sessionIds.iterator().next(),
         200, "OK");
 
