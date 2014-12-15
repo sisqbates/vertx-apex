@@ -39,7 +39,7 @@ import java.util.function.Consumer;
 public class ApexTestBase extends VertxTestBase {
 
   protected static Set<HttpMethod> METHODS = new HashSet<>(Arrays.asList(HttpMethod.DELETE, HttpMethod.GET,
-    HttpMethod.HEAD, HttpMethod.PATCH, HttpMethod.OPTIONS, HttpMethod.TRACE, HttpMethod.POST, HttpMethod.PUT));
+      HttpMethod.HEAD, HttpMethod.PATCH, HttpMethod.OPTIONS, HttpMethod.TRACE, HttpMethod.POST, HttpMethod.PUT));
 
   protected HttpServer server;
   protected HttpClient client;
@@ -78,43 +78,46 @@ public class ApexTestBase extends VertxTestBase {
     testRequest(method, path, null, statusCode, statusMessage, null);
   }
 
-  protected void testRequest(HttpMethod method, String path, int statusCode, String statusMessage,
-                             String responseBody) throws Exception {
+  protected void testRequest(HttpMethod method, String path, int statusCode, String statusMessage, String responseBody)
+      throws Exception {
     testRequest(method, path, null, statusCode, statusMessage, responseBody);
   }
 
-  protected void testRequest(HttpMethod method, String path, int statusCode, String statusMessage,
-                             Buffer responseBody) throws Exception {
+  protected void testRequest(HttpMethod method, String path, int statusCode, String statusMessage, Buffer responseBody)
+      throws Exception {
     testRequestBuffer(method, path, null, null, statusCode, statusMessage, responseBody);
   }
 
-  protected void testRequestWithContentType(HttpMethod method, String path, String contentType, int statusCode, String statusMessage) throws Exception {
+  protected void testRequestWithContentType(HttpMethod method, String path, String contentType, int statusCode,
+      String statusMessage) throws Exception {
     testRequest(method, path, req -> req.putHeader("content-type", contentType), statusCode, statusMessage, null);
   }
 
-  protected void testRequestWithAccepts(HttpMethod method, String path, String accepts, int statusCode, String statusMessage) throws Exception {
+  protected void testRequestWithAccepts(HttpMethod method, String path, String accepts, int statusCode,
+      String statusMessage) throws Exception {
     testRequest(method, path, req -> req.putHeader("accepts", accepts), statusCode, statusMessage, null);
   }
 
-  protected void testRequestWithCookies(HttpMethod method, String path, String cookieHeader, int statusCode, String statusMessage) throws Exception {
+  protected void testRequestWithCookies(HttpMethod method, String path, String cookieHeader, int statusCode,
+      String statusMessage) throws Exception {
     testRequest(method, path, req -> req.putHeader("cookie", cookieHeader), statusCode, statusMessage, null);
   }
 
-  protected void testRequest(HttpMethod method, String path, Consumer<HttpClientRequest> requestAction,
-                             int statusCode, String statusMessage,
-                             String responseBody) throws Exception {
+  protected void testRequest(HttpMethod method, String path, Consumer<HttpClientRequest> requestAction, int statusCode,
+      String statusMessage, String responseBody) throws Exception {
     testRequest(method, path, requestAction, null, statusCode, statusMessage, responseBody);
   }
 
-  protected void testRequest(HttpMethod method, String path, Consumer<HttpClientRequest> requestAction, Consumer<HttpClientResponse> responseAction,
-                             int statusCode, String statusMessage,
-                             String responseBody) throws Exception {
-    testRequestBuffer(method, path, requestAction, responseAction, statusCode, statusMessage, responseBody != null ? Buffer.buffer(responseBody) : null);
+  protected void testRequest(HttpMethod method, String path, Consumer<HttpClientRequest> requestAction,
+      Consumer<HttpClientResponse> responseAction, int statusCode, String statusMessage, String responseBody)
+      throws Exception {
+    testRequestBuffer(method, path, requestAction, responseAction, statusCode, statusMessage,
+        responseBody != null ? Buffer.buffer(responseBody) : null);
   }
 
-  protected void testRequestBuffer(HttpMethod method, String path, Consumer<HttpClientRequest> requestAction, Consumer<HttpClientResponse> responseAction,
-                                   int statusCode, String statusMessage,
-                                   Buffer responseBodyBuffer) throws Exception {
+  protected void testRequestBuffer(HttpMethod method, String path, Consumer<HttpClientRequest> requestAction,
+      Consumer<HttpClientResponse> responseAction, int statusCode, String statusMessage, Buffer responseBodyBuffer)
+      throws Exception {
     CountDownLatch latch = new CountDownLatch(1);
     HttpClientRequest req = client.request(method, 8080, "localhost", path, resp -> {
       assertEquals(statusCode, resp.statusCode());
@@ -137,7 +140,5 @@ public class ApexTestBase extends VertxTestBase {
     req.end();
     awaitLatch(latch);
   }
-
-
 
 }

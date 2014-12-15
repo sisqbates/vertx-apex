@@ -2,20 +2,20 @@ package io.vertx.ext.apex.addons.test;
 
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.apex.addons.Cookies;
+import io.vertx.ext.apex.addons.SessionStore;
 import io.vertx.ext.apex.addons.Sessions;
 import io.vertx.ext.apex.test.ApexTestBase;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
 
 /**
  * @author <a href="mailto:sisqbates@gmail.com">Ferran Puig</a>
  */
-public class SessionsTest extends ApexTestBase {
-
-  private Sessions sessions;
+public class SessionsTestBase extends ApexTestBase {
 
   @Override
   public void setUp() throws Exception {
@@ -23,14 +23,21 @@ public class SessionsTest extends ApexTestBase {
     router.route().handler(Cookies.cookies());
   }
 
+  public SessionStore getStore() {
+    return SessionStore.store();
+  }
+
   @Test
   public void testNoSession() throws Exception {
-    Sessions sessions = Sessions.sessions(10);
+    Sessions sessions = Sessions.sessions(10, this.getStore());
     router.route().handler(sessions);
 
     router.route().handler(rc -> {
-      assertNull(sessions.getSession());
-      rc.response().end();
+      sessions.getSession(s -> {
+        assertTrue(s.succeeded());
+        assertNull(s.result());
+        rc.response().end();
+      });
     });
 
     testRequest(HttpMethod.GET, "/", 200, "OK");
@@ -40,36 +47,45 @@ public class SessionsTest extends ApexTestBase {
 
   @Test
   public void testSessionCreation() throws Exception {
-    Sessions sessions = Sessions.sessions(10);
+    Sessions sessions = Sessions.sessions(10, this.getStore());
     router.route().handler(sessions);
 
     router.route().handler(rc -> {
-      sessions.addSession();
-      assertNotNull(sessions.getSession());
-
-      rc.response().end();
+      sessions.createSession(session -> {
+        assertTrue(session.succeeded());
+        assertNotNull(session.result());
+        rc.response().end();
+      });
     });
 
     testRequest(HttpMethod.GET, "/", 200, "OK");
+
   }
 
   @Test
   public void testNotExpiredSession() throws Exception {
-    Sessions sessions = Sessions.sessions(10);
+    Sessions sessions = Sessions.sessions(10, this.getStore());
     router.route().handler(sessions);
 
     final Set<String> sessionIds = new HashSet<>();
+    CountDownLatch latch = new CountDownLatch(1);
     router.route().handler(rc -> {
       if (sessionIds.isEmpty()) {
-        sessions.addSession();
-        sessionIds.add(sessions.getSession().getId());
+        sessions.createSession((session) -> {
+          assertTrue(session.succeeded());
+          sessionIds.add(session.result().getId());
+          latch.countDown();
+        });
       } else {
-        assertNotNull(sessions.getSession());
-        assertEquals(sessionIds.iterator().next(), sessions.getSession().getId());
+        sessions.getSession((session) -> {
+          assertTrue(session.succeeded());
+          assertEquals(sessionIds.iterator().next(), session.result().getId());
+        });
       }
       rc.response().end();
     });
     testRequest(HttpMethod.GET, "/", 200, "OK");
+    latch.await();
     testRequestWithCookies(HttpMethod.GET, "/", Sessions.APEX_SESSION_COOKIE_NAME + "=" + sessionIds.iterator().next(),
         200, "OK");
 
@@ -77,23 +93,33 @@ public class SessionsTest extends ApexTestBase {
 
   @Test
   public void testExpiredSession() throws Exception {
-    Sessions sessions = Sessions.sessions(1);
+    Sessions sessions = Sessions.sessions(1, this.getStore());
     router.route().handler(sessions);
 
     final Set<String> sessionIds = new HashSet<>();
+    CountDownLatch latch = new CountDownLatch(1);
     router.route().handler(rc -> {
       if (sessionIds.isEmpty()) {
-        sessions.addSession();
-        sessionIds.add(sessions.getSession().getId());
+        sessions.createSession((session) -> {
+          assertTrue(session.succeeded());
+          sessionIds.add(session.result().getId());
+          latch.countDown();
+        });
+
       } else {
-        assertNull(sessions.getSession());
+        sessions.getSession((session) -> {
+          assertTrue(session.succeeded());
+          assertNull(session.result());
+        });
       }
       rc.response().end();
     });
     testRequest(HttpMethod.GET, "/", 200, "OK");
-    Thread.sleep(2000);
+    latch.await();
+    Thread.sleep(5000);
     testRequestWithCookies(HttpMethod.GET, "/", Sessions.APEX_SESSION_COOKIE_NAME + "=" + sessionIds.iterator().next(),
         200, "OK");
 
   }
+
 }
